@@ -1,0 +1,1173 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Studio — Multi-Histórias</title>
+  <style>
+    :root{
+      --bg:#0f1115;
+      --panel:#141820;
+      --card:#181c22;
+      --stroke:#232834;
+      --muted:#9aa4b2;
+      --text:#e7ebf2;
+      --accent:#4c7eff;
+      --accent2:#b84cff;
+      --shadow: 0 8px 24px rgba(0,0,0,.35);
+      --r: 12px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      overflow:hidden;
+    }
+
+    /* Topbar */
+    .topbar{
+      height:60px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:0 18px;
+      background:linear-gradient(180deg, rgba(24,28,34,1), rgba(20,24,32,1));
+      border-bottom:1px solid rgba(255,255,255,.06);
+      font-weight:800;
+    }
+    .topbar .left{display:flex; gap:14px; align-items:center;}
+    .pill{
+      font-size:12px;
+      padding:6px 10px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:999px;
+      color:var(--muted);
+      background:rgba(255,255,255,.03);
+      max-width: 42vw;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .topbar .right{display:flex; gap:10px; align-items:center;}
+    .btn{
+      font-size:13px;
+      padding:8px 12px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.03);
+      color:var(--text);
+      cursor:pointer;
+      font-weight:700;
+    }
+    .btn:hover{ border-color: rgba(76,126,255,.45); }
+    .btn.primary{
+      background: rgba(76,126,255,.12);
+      border-color: rgba(76,126,255,.35);
+    }
+    .btn.danger{
+      background: rgba(255,80,80,.08);
+      border-color: rgba(255,80,80,.25);
+    }
+
+    /* Screens */
+    .screen{ display:none; height: calc(100vh - 60px); overflow:auto; }
+    .screen.active{ display:block; }
+
+    /* HOME (Histórias) */
+    .home{
+      padding:18px;
+    }
+    .home-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:12px;
+      margin-bottom:14px;
+    }
+    .home-title{
+      display:flex; flex-direction:column; gap:6px;
+    }
+    .home-title .h{
+      font-size:16px;
+      font-weight:900;
+    }
+    .home-title .sub{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.4;
+      max-width: 70ch;
+    }
+    .stories-grid{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(220px, 1fr));
+      gap:12px;
+    }
+    @media (max-width: 980px){
+      .stories-grid{ grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+    }
+    @media (max-width: 640px){
+      .stories-grid{ grid-template-columns: 1fr; }
+    }
+    .story-card{
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+      position:relative;
+      overflow:hidden;
+    }
+    .story-card::before{
+      content:"";
+      position:absolute; inset:0;
+      border-radius:16px;
+      pointer-events:none;
+      background: linear-gradient(90deg, rgba(76,126,255,.08), rgba(184,76,255,.04), rgba(76,126,255,.02));
+      opacity:.35;
+      mix-blend-mode: screen;
+    }
+    .story-card .top{
+      position:relative; z-index:1;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .story-card .name{
+      font-weight:900;
+      font-size:14px;
+      max-width: 48ch;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .story-card .meta{
+      font-size:11px;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+    .story-card .desc{
+      position:relative; z-index:1;
+      font-size:12px;
+      color: rgba(231,235,242,.82);
+      line-height:1.45;
+      min-height: 44px;
+      margin-bottom:12px;
+    }
+    .story-card .actions{
+      position:relative; z-index:1;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .badge{
+      font-size:11px;
+      padding:4px 8px;
+      border-radius:999px;
+      background: rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      color: var(--muted);
+    }
+
+    /* WORKSPACE Layout */
+    .layout{ height: calc(100vh - 60px); display:flex; position:relative; overflow:hidden; }
+    .hover-zone{ width:8px; height:100%; }
+
+    /* Hover map */
+    .map{
+      position:absolute; left:-240px; top:0; bottom:0;
+      width:240px;
+      background:rgba(20,24,32,.96);
+      border-right:1px solid rgba(255,255,255,.06);
+      padding:14px 12px;
+      transition: .22s ease;
+      overflow:auto;
+      z-index:30;
+      backdrop-filter: blur(10px);
+    }
+    .map.open{ left:0; }
+    .map h4{
+      margin:6px 6px 14px;
+      font-size:12px; letter-spacing:.12em; text-transform:uppercase;
+      color:var(--muted); font-weight:900;
+    }
+    .scene{
+      padding:10px 10px;
+      border-radius:12px;
+      cursor:pointer;
+      border:1px solid transparent;
+      margin-bottom:8px;
+    }
+    .scene:hover{ background:rgba(255,255,255,.03); border-color: rgba(255,255,255,.06); }
+    .scene.active{ background:rgba(76,126,255,.10); border-color: rgba(76,126,255,.35); }
+    .scene .name{ font-size:13px; line-height:1.2; margin-bottom:8px; }
+    .bar{ height:4px; background:rgba(255,255,255,.08); border-radius:99px; overflow:hidden; }
+    .bar > div{ height:100%; background:var(--accent); width:50%; }
+
+    /* Workspace canvas */
+    .canvas{ flex:1; overflow:auto; padding:18px 18px 28px 18px; position:relative; }
+
+    /* STORY container inside workspace */
+    .story{
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.03);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
+      position:relative;
+    }
+    .story::before{
+      content:"";
+      position:absolute; inset:0;
+      border-radius:16px;
+      pointer-events:none;
+      background: linear-gradient(90deg,
+        rgba(76,126,255,.08),
+        rgba(184,76,255,.04),
+        rgba(76,126,255,.02));
+      opacity:.35;
+      mix-blend-mode: screen;
+    }
+    .story-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:12px;
+      position:relative;
+      z-index:2;
+    }
+    .story-title{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-width:0;
+    }
+    .story-title .h{
+      font-weight:900;
+      font-size:14px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 60vw;
+    }
+    .story-title .sub{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.4;
+    }
+    .story-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      align-items:center;
+    }
+    .divider{
+      height:1px;
+      background: rgba(255,255,255,.08);
+      margin: 12px 0;
+      position:relative;
+      z-index:2;
+    }
+    .story-grid{
+      display:grid;
+      grid-template-columns: 2fr 1.2fr;
+      gap:12px;
+      position:relative;
+      z-index:2;
+    }
+    .panel{
+      background: rgba(24,28,34,.75);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius: 14px;
+      padding:12px;
+    }
+    .panel h5{
+      margin:0 0 10px 0;
+      font-size:12px;
+      letter-spacing:.14em;
+      text-transform:uppercase;
+      color:var(--muted);
+      font-weight:900;
+    }
+    .rowline{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .chip{
+      font-size:12px;
+      padding:7px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+      color: rgba(231,235,242,.92);
+      cursor:pointer;
+      font-weight:700;
+    }
+    .chip:hover{ border-color: rgba(184,76,255,.35); }
+
+    /* Column headers in workspace */
+    .colheads{
+      position:sticky; top:0; z-index:10;
+      background: linear-gradient(180deg, rgba(15,17,21,1) 0%, rgba(15,17,21,.78) 100%);
+      backdrop-filter: blur(6px);
+      padding:10px 0 12px;
+      margin-bottom:12px;
+    }
+    .colheads .grid{
+      display:grid;
+      grid-template-columns: 1.15fr 1.55fr 1.15fr;
+      gap:14px;
+      align-items:end;
+      padding:0 4px;
+    }
+    .head{
+      font-size:12px;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+      color:var(--muted);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-weight:900;
+    }
+    .head .mini{ font-size:11px; letter-spacing:0; text-transform:none; opacity:.75; font-weight:700; }
+
+    /* Block row */
+    .block{
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius: 14px;
+      padding:12px;
+      margin-bottom:12px;
+      box-shadow: 0 0 0 rgba(0,0,0,0);
+      transition: .18s ease;
+      position:relative;
+    }
+    .block:hover{ border-color: rgba(76,126,255,.22); box-shadow: var(--shadow); }
+    .block::before{
+      content:"";
+      position:absolute; inset:0;
+      border-radius: 14px;
+      pointer-events:none;
+      background: linear-gradient(90deg,
+        rgba(76,126,255,.06),
+        rgba(184,76,255,.03),
+        rgba(76,126,255,.02));
+      opacity:.35;
+      mix-blend-mode: screen;
+    }
+    .block-topbar{
+      position:relative;
+      z-index:2;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:10px;
+    }
+    .block-topbar .left{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      min-width:0;
+    }
+    .block-name{
+      font-weight:900;
+      font-size:13px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .block-mini{
+      font-size:11px;
+      color:var(--muted);
+      white-space:nowrap;
+      font-weight:700;
+    }
+    .block-topbar .right{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    /* Row layout */
+    .row{
+      display:grid;
+      grid-template-columns: 1.15fr 1.55fr 1.15fr;
+      gap:14px;
+      align-items:start;
+      position:relative;
+      z-index:2;
+    }
+
+    /* Cells */
+    .cell{
+      background: rgba(24,28,34,.75);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius: 12px;
+      padding:12px;
+      min-height: 74px;
+      position:relative;
+    }
+    .cell-title{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      margin-bottom:8px;
+    }
+    .cell-title .name{
+      font-weight:900;
+      font-size:13px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .meta{ font-size:11px; color:var(--muted); white-space:nowrap; font-weight:700; }
+    .text-preview{
+      font-size:13px;
+      color:rgba(231,235,242,.88);
+      line-height:1.35;
+      max-height: 2.7em;
+      overflow:hidden;
+    }
+
+    /* Thumb grids */
+    .thumb-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; }
+    .thumb{
+      border-radius:10px;
+      aspect-ratio:16/9;
+      background: #222;
+      border:1px solid rgba(255,255,255,.06);
+      position:relative;
+      overflow:hidden;
+    }
+    .thumb::after{
+      content:"";
+      position:absolute; inset:0;
+      background: radial-gradient(600px 140px at 30% 20%, rgba(76,126,255,.18), transparent 55%);
+      opacity:.55;
+      pointer-events:none;
+    }
+    .thumb.empty{ background: rgba(255,255,255,.03); border:1px dashed rgba(255,255,255,.16); }
+
+    /* naming: bloco.imagem */
+    .tag{
+      position:absolute;
+      left:8px; top:8px;
+      font-size:10px;
+      padding:4px 7px;
+      border-radius:999px;
+      background: rgba(0,0,0,.45);
+      border:1px solid rgba(255,255,255,.10);
+      color: rgba(231,235,242,.9);
+      z-index:2;
+      font-weight:800;
+    }
+
+    /* Image menu */
+    .thumb-actions{
+      position:absolute;
+      right:8px; top:8px;
+      display:flex;
+      gap:6px;
+      z-index:3;
+      opacity:0;
+      transform: translateY(-2px);
+      transition: .12s ease;
+      pointer-events:none;
+    }
+    .thumb:hover .thumb-actions,
+    .thumb.menu-open .thumb-actions{
+      opacity:1;
+      transform: translateY(0);
+      pointer-events:auto;
+    }
+    .icon-btn{
+      width:26px; height:26px;
+      border-radius:9px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.42);
+      color: rgba(231,235,242,.92);
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      font-size:16px;
+      line-height:0;
+      font-weight:900;
+    }
+    .icon-btn:hover{ border-color: rgba(76,126,255,.55); }
+    .dropdown{
+      position:absolute;
+      right:8px;
+      top:38px;
+      min-width: 210px;
+      background: rgba(20,24,32,.98);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      display:none;
+      z-index:50;
+    }
+    .thumb.menu-open .dropdown{ display:block; }
+    .menu-item{
+      padding:10px 12px;
+      font-size:13px;
+      cursor:pointer;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+      border-top:1px solid rgba(255,255,255,.06);
+      font-weight:700;
+    }
+    .menu-item:first-child{ border-top:none; }
+    .menu-item:hover{ background: rgba(255,255,255,.04); }
+    .k{ font-size:11px; color:var(--muted); font-weight:800; }
+
+    /* Videos */
+    .video-grid{ display:grid; grid-template-columns: repeat(2, 1fr); gap:10px; }
+    .vid{
+      border-radius:10px;
+      aspect-ratio:16/9;
+      background: linear-gradient(135deg, rgba(255,255,255,.06), rgba(0,0,0,.25));
+      border:1px solid rgba(255,255,255,.06);
+      position:relative;
+      overflow:hidden;
+    }
+    .vid .play{ position:absolute; inset:0; display:grid; place-items:center; opacity:.8; font-size:18px; font-weight:900; }
+    .vid .uses{
+      position:absolute; left:8px; bottom:8px;
+      font-size:10px; padding:4px 7px; border-radius:999px;
+      background: rgba(0,0,0,.45);
+      border:1px solid rgba(255,255,255,.10);
+      color: rgba(231,235,242,.9);
+      font-weight:800;
+    }
+    .vid.empty{
+      border:1px dashed rgba(255,255,255,.16);
+      background: rgba(255,255,255,.03);
+    }
+
+    /* Expanded */
+    .expanded{
+      display:none; margin-top:12px; padding-top:12px;
+      border-top:1px solid rgba(255,255,255,.06);
+      position:relative; z-index:2;
+    }
+    .block.active .expanded{ display:block; }
+
+    /* Library modal */
+    .modal-backdrop{
+      position:fixed; inset:0;
+      background: rgba(0,0,0,.65);
+      display:none;
+      z-index:100;
+    }
+    .modal{
+      position:fixed;
+      left:50%; top:50%;
+      transform: translate(-50%,-50%);
+      width:min(1100px, 92vw);
+      height:min(80vh, 720px);
+      background: rgba(20,24,32,.98);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      display:none;
+      z-index:101;
+      overflow:hidden;
+    }
+    .modal-head{
+      display:flex; justify-content:space-between; align-items:center;
+      padding:14px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .modal-head .t{ font-weight:900; font-size:14px; }
+    .modal-body{
+      padding:14px;
+      height: calc(100% - 56px);
+      overflow:auto;
+    }
+    .tabs{ display:flex; gap:10px; margin-bottom:12px; }
+    .tab{
+      font-size:12px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+      cursor:pointer;
+      color: rgba(231,235,242,.92);
+      font-weight:800;
+    }
+    .tab.active{ border-color: rgba(76,126,255,.55); background: rgba(76,126,255,.10); }
+    .lib-grid{
+      display:grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap:10px;
+    }
+    .lib-item{
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.03);
+      overflow:hidden;
+      cursor:pointer;
+      position:relative;
+    }
+    .lib-item .ph{ aspect-ratio:16/9; background: rgba(255,255,255,.06); }
+    .lib-item .cap{
+      padding:8px;
+      font-size:11px;
+      color: var(--muted);
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      font-weight:800;
+    }
+    .check{
+      position:absolute;
+      left:8px; top:8px;
+      width:18px; height:18px;
+      border-radius:6px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.35);
+    }
+    .lib-item.selected .check{
+      background: rgba(76,126,255,.55);
+      border-color: rgba(76,126,255,.75);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="topbar">
+    <div class="left">
+      <div>AI Video Studio</div>
+      <div class="pill" id="contextPill">Minhas Histórias</div>
+    </div>
+    <div class="right" id="topbarRight">
+      <button class="btn primary" onclick="createNewStory()">Nova história</button>
+    </div>
+  </div>
+
+  <!-- HOME: lista de histórias -->
+  <section class="screen active" id="screenHome">
+    <div class="home">
+      <div class="home-head">
+        <div class="home-title">
+          <div class="h">Minhas Histórias</div>
+          <div class="sub">
+            Você pode trabalhar em várias histórias/projetos. Cada história tem sua própria biblioteca, configurações
+            (divisão em blocos, padrão de imagens/vídeos, prompt base, skills e LUT) e exportações.
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <span class="badge" id="storiesCount">3 histórias</span>
+          <button class="btn primary" onclick="createNewStory()">Nova história</button>
+        </div>
+      </div>
+
+      <div class="stories-grid" id="storiesGrid">
+        <!-- cards renderizados via JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- WORKSPACE: uma história aberta -->
+  <section class="screen" id="screenStory">
+    <div class="layout">
+      <div class="hover-zone" onmouseenter="openMap()"></div>
+
+      <aside class="map" id="map" onmouseleave="closeMapIfNotPinned()">
+        <h4>Cenas</h4>
+        <div id="mapScenes"></div>
+        <div style="margin-top:12px;">
+          <button class="btn" style="width:100%;" onclick="pinMap()">Fixar aberto</button>
+        </div>
+      </aside>
+
+      <main class="canvas" id="canvas" onclick="onCanvasClick(event)">
+        <!-- STORY CONTAINER (workspace) -->
+        <section class="story" id="storyContainer">
+          <div class="story-head">
+            <div class="story-title">
+              <div class="h" id="storyTitle">História</div>
+              <div class="sub" id="storySubtitle">Workspace da história</div>
+            </div>
+            <div class="story-actions">
+              <button class="btn" onclick="goHome()">Voltar para histórias</button>
+              <button class="btn" onclick="uploadStory()">Upload de história</button>
+              <button class="btn" onclick="openOrgSettings()">Config. organização</button>
+              <button class="btn" onclick="openBasePrompt()">Prompt base</button>
+              <button class="btn" onclick="openSkills()">Skills</button>
+              <button class="btn" onclick="openLUT()">LUT</button>
+              <button class="btn primary" onclick="openLibrary()">Biblioteca</button>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="story-grid">
+            <div class="panel">
+              <h5>Organização (atalhos)</h5>
+              <div class="rowline">
+                <div class="chip" onclick="openOrgSettings()">Dividir em blocos (ex: 400 chars)</div>
+                <div class="chip" onclick="openOrgSettings()">Padrão: 4 imagens</div>
+                <div class="chip" onclick="openOrgSettings()">Padrão: 1 vídeo</div>
+                <div class="chip" onclick="openBasePrompt()">Editar prompt base</div>
+                <div class="chip" onclick="openSkills()">Selecionar skills</div>
+                <div class="chip" onclick="openLUT()">Selecionar LUT</div>
+              </div>
+              <div style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.4;">
+                Naming automático das imagens: <b>Bloco.Imagem</b> (ex: <b>1.1</b>, <b>1.2</b>, <b>2.3</b>).
+              </div>
+            </div>
+
+            <div class="panel">
+              <h5>Exportar (projeto)</h5>
+              <div class="rowline">
+                <button class="btn" style="width:100%; text-align:left;" onclick="exportStoryTxt()">Baixar .txt (história inteira)</button>
+                <button class="btn" style="width:100%; text-align:left;" onclick="downloadAllImages()">Baixar todas as imagens geradas</button>
+                <button class="btn" style="width:100%; text-align:left;" onclick="downloadAllVideos()">Baixar todos os vídeos gerados</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Column heads -->
+        <div class="colheads">
+          <div class="grid">
+            <div class="head">Texto <span class="mini">blocos</span></div>
+            <div class="head">Imagens <span class="mini">thumbs (Bloco.Imagem)</span></div>
+            <div class="head">Vídeos <span class="mini">gerados</span></div>
+          </div>
+        </div>
+
+        <!-- Blocks -->
+        <div id="blocksArea"></div>
+
+        <div style="height:30px;"></div>
+      </main>
+    </div>
+  </section>
+
+  <!-- LIBRARY MODAL -->
+  <div class="modal-backdrop" id="mb" onclick="closeLibrary()"></div>
+  <div class="modal" id="m">
+    <div class="modal-head">
+      <div class="t" id="libTitle">Biblioteca</div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button class="btn" onclick="downloadSelected()">Baixar selecionados</button>
+        <button class="btn" onclick="downloadAllFromLibrary()">Baixar tudo</button>
+        <button class="btn danger" onclick="closeLibrary()">Fechar</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="tabs">
+        <div class="tab active" id="tab-img" onclick="setTab('img')">Imagens</div>
+        <div class="tab" id="tab-vid" onclick="setTab('vid')">Vídeos</div>
+      </div>
+
+      <div class="lib-grid" id="lib"></div>
+    </div>
+  </div>
+
+<script>
+  // ======== Mock data (cada história com suas coisas) ========
+  const stories = [
+    {
+      id: "s1",
+      name: "Dark Channel 01 — A Companhia que Possuiu o Mundo",
+      desc: "História longa dividida em blocos. Workflow: texto → imagens → vídeos.",
+      blocks: [
+        { n: 1, title: "Chegada", progress: 60, imgs: 4, vids: 1, text: "Um homem chega à cidade ao amanhecer. Ele não sabe que está sendo observado..." },
+        { n: 2, title: "O estranho", progress: 30, imgs: 4, vids: 1, text: "Ele nota uma figura parada sob a sombra de um arco. Não se move..." },
+        { n: 3, title: "Revelação", progress: 90, imgs: 6, vids: 2, text: "Uma carta antiga aparece na mesa. O selo não é de família nobre nenhuma..." }
+      ],
+      library: {
+        images: ["1.1","1.2","1.3","1.4","2.1","2.2","3.1","3.2"],
+        videos: ["V1 (1.1+1.2)", "V2 (3.5+3.6)"]
+      }
+    },
+    {
+      id: "s2",
+      name: "NŪR — The Invisible City (EP03)",
+      desc: "Projeto com LUT frio institucional. Biblioteca separada.",
+      blocks: [
+        { n: 1, title: "Arquivo", progress: 15, imgs: 4, vids: 1, text: "O registro oficial não registra nada. A ausência vira prova..." },
+        { n: 2, title: "Chegada", progress: 10, imgs: 4, vids: 1, text: "Uma cidade real, mas invisível. A câmera observa de longe..." }
+      ],
+      library: { images: ["1.1","1.2"], videos: ["V1 (1.1)"] }
+    },
+    {
+      id: "s3",
+      name: "Versailles — Beyond the Gold Gate",
+      desc: "Paleta creme/âmbar. Workflow igual, com assets próprios.",
+      blocks: [
+        { n: 1, title: "A Corte", progress: 40, imgs: 4, vids: 1, text: "Perfume, tecido e ritual. O luxo como mecanismo..." }
+      ],
+      library: { images: ["1.1","1.2","1.3"], videos: [] }
+    }
+  ];
+
+  let currentStoryId = null;
+  let mapPinned = false;
+  let currentLibTab = "img";
+
+  // ======== Render Home ========
+  function renderHome(){
+    const grid = document.getElementById("storiesGrid");
+    grid.innerHTML = "";
+    stories.forEach(s=>{
+      const blocksCount = s.blocks.length;
+      const imgsCount = (s.library?.images || []).length;
+      const vidsCount = (s.library?.videos || []).length;
+
+      const card = document.createElement("div");
+      card.className = "story-card";
+      card.innerHTML = `
+        <div class="top">
+          <div>
+            <div class="name">${escapeHtml(s.name)}</div>
+            <div class="meta">${blocksCount} blocos • ${imgsCount} imagens • ${vidsCount} vídeos</div>
+          </div>
+          <span class="badge">${Math.round(avgProgress(s.blocks))}%</span>
+        </div>
+        <div class="desc">${escapeHtml(s.desc)}</div>
+        <div class="actions">
+          <button class="btn primary" onclick="openStory('${s.id}')">Abrir</button>
+          <button class="btn" onclick="duplicateStory('${s.id}')">Duplicar</button>
+          <button class="btn danger" onclick="deleteStory('${s.id}')">Excluir</button>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+    document.getElementById("storiesCount").textContent = `${stories.length} histórias`;
+  }
+
+  function avgProgress(blocks){
+    if(!blocks?.length) return 0;
+    return blocks.reduce((a,b)=>a+(b.progress||0),0)/blocks.length;
+  }
+
+  function createNewStory(){
+    alert("Nova história (placeholder) — aqui abriria um modal de criação.");
+  }
+
+  function duplicateStory(id){
+    alert(`Duplicar história ${id} (placeholder)`);
+  }
+
+  function deleteStory(id){
+    alert(`Excluir história ${id} (placeholder)`);
+  }
+
+  // ======== Navigation ========
+  function showScreen(screenId){
+    document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+    document.getElementById(screenId).classList.add("active");
+  }
+
+  function goHome(){
+    currentStoryId = null;
+    document.getElementById("contextPill").textContent = "Minhas Histórias";
+    document.getElementById("topbarRight").innerHTML = `<button class="btn primary" onclick="createNewStory()">Nova história</button>`;
+    closeLibrary();
+    closeAllThumbMenus();
+    showScreen("screenHome");
+  }
+
+  function openStory(id){
+    currentStoryId = id;
+    const story = stories.find(s=>s.id===id);
+    if(!story) return;
+
+    document.getElementById("contextPill").textContent = story.name;
+
+    // Topbar right for workspace
+    document.getElementById("topbarRight").innerHTML = `
+      <button class="btn" onclick="goHome()">Voltar</button>
+      <button class="btn primary" onclick="openLibrary()">Biblioteca</button>
+    `;
+
+    // Fill story container
+    document.getElementById("storyTitle").textContent = story.name;
+    document.getElementById("storySubtitle").textContent = `${story.blocks.length} blocos • biblioteca própria • configurações e exportação por história`;
+
+    // Render map + blocks
+    renderMap(story);
+    renderBlocks(story);
+
+    showScreen("screenStory");
+  }
+
+  // ======== Workspace: Map ========
+  function renderMap(story){
+    const wrap = document.getElementById("mapScenes");
+    wrap.innerHTML = "";
+    story.blocks.forEach((b, idx)=>{
+      const div = document.createElement("div");
+      div.className = `scene ${idx===0 ? "active":""}`;
+      div.onclick = ()=>focusBlock(`b${b.n}`);
+      div.innerHTML = `
+        <div class="name">${String(b.n).padStart(2,"0")} — ${escapeHtml(b.title)}</div>
+        <div class="bar"><div style="width:${b.progress||0}%"></div></div>
+      `;
+      wrap.appendChild(div);
+    });
+  }
+
+  function openMap(){ document.getElementById('map').classList.add('open'); }
+  function closeMapIfNotPinned(){ if(!mapPinned) document.getElementById('map').classList.remove('open'); }
+  function pinMap(){
+    mapPinned = !mapPinned;
+    const btn = document.querySelector('#map .btn');
+    btn.textContent = mapPinned ? 'Desafixar' : 'Fixar aberto';
+    if(mapPinned) openMap(); else closeMapIfNotPinned();
+  }
+
+  // ======== Workspace: Blocks ========
+  function renderBlocks(story){
+    const area = document.getElementById("blocksArea");
+    area.innerHTML = "";
+
+    story.blocks.forEach((b, idx)=>{
+      const blockId = `b${b.n}`;
+      const isActive = idx===0;
+
+      const imgs = [];
+      // cria thumbnails 1..b.imgs
+      for(let i=1;i<=b.imgs;i++){
+        const isEmpty = (b.n===2 && i>=3) ? "empty" : ""; // só pra demonstrar vazios
+        imgs.push(`
+          <div class="thumb ${isEmpty}" data-block="${b.n}" data-img="${i}" onclick="onThumbClick(event)">
+            <span class="tag">${b.n}.${i}</span>
+            <div class="thumb-actions">
+              <button class="icon-btn" title="Menu" onclick="toggleThumbMenu(event, this)">⋯</button>
+            </div>
+            <div class="dropdown">
+              <div class="menu-item" onclick="generateImage(event,${b.n},${i})">Gerar imagem <span class="k">G</span></div>
+              <div class="menu-item" onclick="createVideoFromImage(event,${b.n},${i})">Criar vídeo desta imagem <span class="k">V</span></div>
+            </div>
+          </div>
+        `);
+      }
+
+      const vids = [];
+      // cria slots/itens de vídeo (só demo)
+      const vidsCount = b.vids || 0;
+      for(let v=1; v<=vidsCount; v++){
+        const empty = (b.n===2) ? "empty" : "";
+        vids.push(`
+          <div class="vid ${empty}">
+            <div class="play">${empty ? "＋" : "▶"}</div>
+            <div class="uses">${empty ? "vazio" : `usa ${b.n}.1${b.imgs>=2 ? " + "+b.n+".2" : ""}`}</div>
+          </div>
+        `);
+      }
+
+      const block = document.createElement("section");
+      block.className = `block ${isActive ? "active":""}`;
+      block.id = blockId;
+      block.setAttribute("onclick", `toggleBlock(event,'${blockId}')`);
+      block.innerHTML = `
+        <div class="block-topbar">
+          <div class="left">
+            <div class="block-name">BLOCO ${String(b.n).padStart(2,"0")} — ${escapeHtml(b.title)}</div>
+            <div class="block-mini">${b.imgs}/${b.imgs} Img • ${b.vids}/${b.vids} Vid</div>
+          </div>
+          <div class="right">
+            <button class="btn" onclick="downloadBlockImages(event,'${blockId}')">Baixar imagens</button>
+            <button class="btn" onclick="downloadBlockVideos(event,'${blockId}')">Baixar vídeos</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="cell">
+            <div class="cell-title">
+              <div class="name">Texto</div>
+              <div class="meta">~${10 + b.n*2}s</div>
+            </div>
+            <div class="text-preview">${escapeHtml(b.text)}</div>
+          </div>
+
+          <div class="cell">
+            <div class="cell-title">
+              <div class="name">Imagens</div>
+              <div class="meta">${b.imgs} itens</div>
+            </div>
+            <div class="thumb-grid">
+              ${imgs.join("")}
+            </div>
+          </div>
+
+          <div class="cell">
+            <div class="cell-title">
+              <div class="name">Vídeos</div>
+              <div class="meta">${b.vids} itens</div>
+            </div>
+            <div class="video-grid">
+              ${vids.join("")}
+            </div>
+          </div>
+        </div>
+
+        <div class="expanded">
+          <div class="rowline">
+            <div class="chip">Editar texto</div>
+            <div class="chip">Definir # imagens</div>
+            <div class="chip">Criar vídeo (selecionar 1–2 imgs)</div>
+          </div>
+        </div>
+      `;
+      area.appendChild(block);
+    });
+  }
+
+  function focusBlock(blockId){
+    // abre o bloco e leva até ele
+    document.querySelectorAll('.block').forEach(b => b.classList.remove('active'));
+    const el = document.getElementById(blockId);
+    if(el){
+      el.classList.add('active');
+      el.scrollIntoView({behavior:'smooth', block:'start'});
+    }
+    // ativa no mapa
+    const blocks = document.querySelectorAll('#mapScenes .scene');
+    blocks.forEach(s=>s.classList.remove('active'));
+    const n = parseInt(blockId.replace("b",""),10);
+    const idx = isNaN(n) ? 0 : (n-1);
+    if(blocks[idx]) blocks[idx].classList.add('active');
+
+    if(!mapPinned){
+      setTimeout(()=>document.getElementById('map').classList.remove('open'), 600);
+    }
+  }
+
+  function toggleBlock(event, blockId){
+    event.stopPropagation();
+    if(event.target.closest('.dropdown') || event.target.closest('.icon-btn') || event.target.closest('button')) return;
+    const el = document.getElementById(blockId);
+    document.querySelectorAll('.block').forEach(b => { if(b !== el) b.classList.remove('active'); });
+    el.classList.toggle('active');
+    const n = parseInt(blockId.replace("b",""),10);
+    const scenes = document.querySelectorAll('#mapScenes .scene');
+    scenes.forEach(s=>s.classList.remove('active'));
+    if(scenes[n-1]) scenes[n-1].classList.add('active');
+  }
+
+  // ======== Thumb menus ========
+  function closeAllThumbMenus(){
+    document.querySelectorAll('.thumb.menu-open').forEach(t => t.classList.remove('menu-open'));
+  }
+  function toggleThumbMenu(event, btn){
+    event.stopPropagation();
+    const thumb = btn.closest('.thumb');
+    const isOpen = thumb.classList.contains('menu-open');
+    closeAllThumbMenus();
+    if(!isOpen) thumb.classList.add('menu-open');
+  }
+  function onThumbClick(event){ event.stopPropagation(); }
+  function onCanvasClick(){ closeAllThumbMenus(); }
+
+  function generateImage(event, blockNum, imgIndex){
+    event.stopPropagation(); closeAllThumbMenus();
+    alert(`(${currentStoryId}) Gerar imagem ${blockNum}.${imgIndex}`);
+  }
+  function createVideoFromImage(event, blockNum, imgIndex){
+    event.stopPropagation(); closeAllThumbMenus();
+    alert(`(${currentStoryId}) Criar vídeo a partir da imagem ${blockNum}.${imgIndex}`);
+  }
+
+  // ======== Story container actions (placeholders) ========
+  function uploadStory(){ alert(`(${currentStoryId}) Upload de história (placeholder)`); }
+  function openOrgSettings(){ alert(`(${currentStoryId}) Config: dividir em blocos + padrões (placeholder)`); }
+  function openBasePrompt(){ alert(`(${currentStoryId}) Prompt base (placeholder)`); }
+  function openSkills(){ alert(`(${currentStoryId}) Skills (placeholder)`); }
+  function openLUT(){ alert(`(${currentStoryId}) LUT (placeholder)`); }
+
+  // Exports
+  function exportStoryTxt(){ alert(`(${currentStoryId}) Baixar .txt da história inteira (placeholder)`); }
+  function downloadAllImages(){ alert(`(${currentStoryId}) Baixar todas as imagens do projeto (placeholder)`); }
+  function downloadAllVideos(){ alert(`(${currentStoryId}) Baixar todos os vídeos do projeto (placeholder)`); }
+
+  // Block downloads
+  function downloadBlockImages(event, blockId){
+    event.stopPropagation();
+    alert(`(${currentStoryId}) Baixar imagens do ${blockId} (placeholder)`);
+  }
+  function downloadBlockVideos(event, blockId){
+    event.stopPropagation();
+    alert(`(${currentStoryId}) Baixar vídeos do ${blockId} (placeholder)`);
+  }
+
+  // ======== Library ========
+  function openLibrary(){
+    const story = stories.find(s=>s.id===currentStoryId);
+    if(!story) return;
+    document.getElementById("libTitle").textContent = `Biblioteca — ${story.name}`;
+    currentLibTab = "img";
+    document.getElementById("tab-img").classList.add("active");
+    document.getElementById("tab-vid").classList.remove("active");
+    renderLibrary(story);
+    document.getElementById('mb').style.display='block';
+    document.getElementById('m').style.display='block';
+  }
+  function closeLibrary(){
+    document.getElementById('mb').style.display='none';
+    document.getElementById('m').style.display='none';
+  }
+  function setTab(which){
+    currentLibTab = which;
+    document.getElementById('tab-img').classList.toggle('active', which==='img');
+    document.getElementById('tab-vid').classList.toggle('active', which==='vid');
+    const story = stories.find(s=>s.id===currentStoryId);
+    if(story) renderLibrary(story);
+  }
+  function renderLibrary(story){
+    const lib = document.getElementById("lib");
+    lib.innerHTML = "";
+    const items = currentLibTab === "img" ? story.library.images : story.library.videos;
+
+    items.forEach(label=>{
+      const el = document.createElement("div");
+      el.className = "lib-item";
+      el.onclick = ()=>toggleSelect(el);
+      el.innerHTML = `
+        <div class="check"></div>
+        <div class="ph"></div>
+        <div class="cap"><span>${escapeHtml(label)}</span><span>${currentLibTab}</span></div>
+      `;
+      lib.appendChild(el);
+    });
+  }
+  function toggleSelect(el){ el.classList.toggle('selected'); }
+  function downloadSelected(){ alert(`(${currentStoryId}) Baixar selecionados (placeholder)`); }
+  function downloadAllFromLibrary(){ alert(`(${currentStoryId}) Baixar tudo da biblioteca (placeholder)`); }
+
+  // ESC
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape'){
+      closeAllThumbMenus();
+      closeLibrary();
+    }
+  });
+
+  // helpers
+  function escapeHtml(str){
+    return String(str).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+  }
+
+  // init
+  renderHome();
+</script>
+</body>
+</html>
